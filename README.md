@@ -70,11 +70,17 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 * Example :
 
 	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=STATUS"
+
 	{
+
  	"id": "ID",
+
  	"last_app": "",
+
  	"connected": true,
+
   	"return_value": status
+
 	}
 
 # References
