@@ -7,8 +7,8 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
  * Photon with latest firmware updates :
      
     ```
-    sudo particle flash --usb cc3000
-    sudo particle flash --usb deep_update_2014_06
+	sudo particle flash --usb cc3000
+	sudo particle flash --usb deep_update_2014_06
     ``` 
  * 1 Relay
  * 1 transformer 220V to 5V
@@ -58,9 +58,7 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 <img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/base2.jpg" width="500">
 
 # Commands
-	```
 	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=CMD_NAME"
-	```
  
  * CMD_NAME =
    * POWERON	(activate the overheat)
@@ -73,10 +71,10 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 	```
 	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=STATUS"
 	{
- 	"id": "ID",
- 	"last_app": "",
- 	"connected": true,
-  	"return_value": status
+	"id": "ID",
+	"last_app": "",
+	"connected": true,
+	"return_value": status
 	}
 	```
 
