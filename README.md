@@ -50,7 +50,10 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 <img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/transformer.jpg" width="500">
 
 * The Photon :
+
 <img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/photon.jpg" width="500">
+
+* The Base :
 
 <img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/base2.jpg" width="500">
 
