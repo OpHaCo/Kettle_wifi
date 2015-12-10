@@ -30,29 +30,29 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 
 * The relay is connected to the photons , as in the diagrams below. Connect the pins relay on the live wire (brown 220v) for close or open the current on the kettle, The relay is connected to the output photon in D4 and Vin(5v), GND.
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/relay.JPG" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/relay.JPG" width="500">
 
 * The thermistor is placed in the handle of the kettle.
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/thermistor.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/thermistor.jpg" width="500">
 
 * For connect the pins of the sensor to the kettle at the base, placing copper plate on the kettle and springs on the base, as below.
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/copperplate.jpg" width="500">
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/spring.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/copperplate.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/spring.jpg" width="500">
 
 * To detect that the kettle is on the base , use the old switches the kettle placed on the base.
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/kettledetect.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/kettledetect.jpg" width="500">
 
 * for the sparkcore and the relay is supplied with 5V, install a portable charger transformer.
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/transformer.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/transformer.jpg" width="500">
 
 * The Photon :
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/photon.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/photon.jpg" width="500">
 
-<img src="https://github.com/OpHaCo/fan_wifi/blob/master/img/base2.jpg" width="500">
+<img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/base2.jpg" width="500">
 
 # Commands
 	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=CMD_NAME"
