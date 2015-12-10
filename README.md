@@ -67,7 +67,8 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
    * ERROR		(for get the error number)
    * TEMP		(for get the temperature)
      
-* Example :
+ * Example :
+
 	```
 	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=STATUS"
 	{
