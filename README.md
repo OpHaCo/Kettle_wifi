@@ -67,6 +67,16 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
    * ERROR		(for get the error number)
    * TEMP		(for get the temperature)
      
+ * Status =
+   * 0 : Kettle is not on the base
+   * 1 : Kettle is on the base
+   * 2 : The kettle heats
+
+ * Error =
+   * 0 : No error
+   * 1 : The kettle was badly put on its base
+   * 2 : No water in the kettle
+
  * Example :
 
 	```
