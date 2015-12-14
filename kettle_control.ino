@@ -21,7 +21,6 @@
  * You should have received a copy of the license along with this
  * work.  If not, see <http://creativecommons.org/licenses/by/3.0/>.
  *****************************************************************************/
- 
 
 int kettledetect = D3;      //  {
 int push = D2;              //
@@ -53,10 +52,12 @@ void setup() {
     error = 0;
     compt = 0;
     temp = analogRead(captemp);
-    Particle.variable("error", error);
-    Particle.variable("state", status);
     err();
     state();
+
+    Particle.variable("error", error);
+    Particle.variable("state", status);
+    Particle.variable("temp", temp);
 }
 
 void loop() 
@@ -177,13 +178,13 @@ void err() {                                    // error detect
 
 int kettleControl(String command)                      // command wifi
 {
-    if(command.substring(0,8) == "POWEROFF")        // power off command
+    if(command == "POWEROFF")        // power off command
     {
         stopoverheat();
         return 1;
     }
     
-    if(command.substring(0,7) == "POWERON")        // set power on overheat command
+    if(command == "POWERON")        // set power on overheat command
     {
         if (status == 0) {                          // if kettle is not on base, return 0
             return false;
@@ -196,24 +197,6 @@ int kettleControl(String command)                      // command wifi
         }
         return 1;
     }
-    
-    if(command.substring(0,5) == "ERROR") {         // return the error number
-        err();
-        return error;
-    }
-    
-    if(command.substring(0,6) == "STATUS") {        // return the status of the kettle
-        return status;
-    }
-    
-    if(command.substring(0,4) == "TEMP") {          // return the temperature of the water
-        return temp;
-    }
-    
-    if(command.substring(0,5) == "COMPT") {
-        return compt;
-    }
-    
     else {
         return -1;
     }

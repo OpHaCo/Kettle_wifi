@@ -58,36 +58,37 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 <img src="https://github.com/OpHaCo/kettle_wifi/blob/master/img/base2.jpg" width="500">
 
 # Commands
-	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=CMD_NAME"
- 
+## Control commands - as string
+
  * CMD_NAME =
-   * POWERON	(activate the overheat)
-   * POWEROFF	(stop the overheat)
-   * STATUS		(for get the status)
-   * ERROR		(for get the error number)
-   * TEMP		(for get the temperature)
-     
- * Status =
-   * 0 : Kettle is not on the base
-   * 1 : Kettle is on the base
-   * 2 : The kettle heats
+   * "POWERON"
+   * "POWEROFF"
 
- * Error =
-   * 0 : No error
-   * 1 : The kettle was badly put on its base
-   * 2 : No water in the kettle
+## Fan control over particle API
 
- * Example :
+	curl https://api.spark.io/v1/devices/'PHOTON_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=CMD_NAME"
 
-	```
-	curl https://api.spark.io/v1/devices/'SPARK_CORE_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=STATUS"
-	{
-	"id": "ID",
-	"last_app": "",
-	"connected": true,
-	"return_value": status
-	}
-	```
+## Input commands - as strings
+Different variables can be read : 
+
+ * VARIABLE_NAME =
+   * "error" : error value, possible values are : 
+      * 0 : No error
+      * 1 : The kettle was badly put on its base
+      * 2 : No water in the kettle
+   * "state" : kettle status, possible values : 
+      * 0 : Kettle is not on the base
+      * 1 : Kettle is on the base
+      * 2 : The kettle heats
+   * "temp" : current kettle temperature
+
+## Read variable over particle API
+
+    curl https://api.spark.io/v1/devices/'PHOTON_ID'/'VARIABLE'?access_token='YOUR_TOKEN'
+
+Example :
+
+    curl https://api.spark.io/v1/devices/'PHOTON_ID'/temp?access_token='YOUR_TOKEN'
 
 # References
  * https://docs.particle.io/guide/getting-started/intro/photon/
