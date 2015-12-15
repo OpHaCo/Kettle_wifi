@@ -21,183 +21,210 @@
  * You should have received a copy of the license along with this
  * work.  If not, see <http://creativecommons.org/licenses/by/3.0/>.
  *****************************************************************************/
-
-int kettledetect = D3;      //  {
-int push = D2;              //
-int ledr = D1;              //   Define pins
-int ledj = D0;              //
-int captemp = A0;           //
-int relay = D4;             //  }
+typedef enum{
+    NO_ERROR = 0,
+    BAD_POSITION = 1, /** The kettle was badly put on its base */
+    NO_WATER = 2
+}EKettleError;
 
 int kettleControl(String command);
 void waittemp(int tempmax);
-void overheat(void);
+int overheat(void);
 void stopoverheat();
-void err();
-void state();
-int status, error, temp, compt, tempinit;
+void checkError();
+void updateKettleDockStatus();
+void updateTemp();
+bool checkStatus(int pin, bool status);
 
+static const int KETTLE_ON_BASE_IN_PIN  = D3;
+static const int HEATING_BUTTON_PIN     = D2;
+static const int HEATING_IND_LED_PIN    = D1;
+static const int KETTLE_DOCKED_LED_PIN  = D0;
+static const int TEMP_SENSOR_PIN        = A0;
+static const int RELAY_PIN              = D4;
+
+static const int BOILING_VALUE = 3290;
+
+inline bool isOnBase(void){return !digitalRead(KETTLE_ON_BASE_IN_PIN);}
+inline bool isTempSensorConnected(void){return analogRead(TEMP_SENSOR_PIN) > 100;}
+inline bool isDocked(void){return isOnBase() && isTempSensorConnected();}
+
+ /*** DOCKER = kettle on base and temperature sensor connected */
+bool isKettleDocked, isHeating;
+int error, temp, compt, tempinit;
 
 void setup() {
-    Particle.function("kettleAPI", kettleControl); // Expose the kettle function to the Spark API
+    Particle.function("kettleAPI", kettleControl); 
     
-    pinMode(kettledetect, INPUT_PULLUP);           // sets the pins as input
-    pinMode(push, INPUT_PULLUP);                    // sets the pins as input
-    pinMode(ledr, OUTPUT);                  // sets the pins as output
-    pinMode(ledj, OUTPUT);                  // sets the pins as output
-    pinMode(relay, OUTPUT);                  // sets the pins as output
+    pinMode(KETTLE_ON_BASE_IN_PIN, INPUT_PULLUP);
+    pinMode(HEATING_BUTTON_PIN, INPUT_PULLUP);
+    pinMode(HEATING_IND_LED_PIN, OUTPUT);
+    pinMode(KETTLE_DOCKED_LED_PIN, OUTPUT);
+    pinMode(RELAY_PIN, OUTPUT);
+    pinMode(TEMP_SENSOR_PIN, INPUT);
    
-    attachInterrupt(kettledetect, kettlechange, CHANGE);            // call Kettlechange if kettledect change state
-    attachInterrupt(push, pushChange, FALLING);                     // call pushChange if push change of low state
-    error = 0;
+    attachInterrupt(HEATING_BUTTON_PIN, onHeatButtonPress, FALLING);       // call onHeatButtonPress if push change of low state
+    
+    error = NO_ERROR;
     compt = 0;
-    temp = analogRead(captemp);
-    err();
-    state();
+    temp = analogRead(TEMP_SENSOR_PIN);
+    tempinit = 0;
+    isKettleDocked = false;
+    isHeating = false;
+
+    checkError();
+    updateKettleDockStatus();
+    updateTemp();
 
     Particle.variable("error", error);
-    Particle.variable("state", status);
+    Particle.variable("isheating", isHeating);
+    Particle.variable("isdocked", isKettleDocked);
     Particle.variable("temp", temp);
 }
 
 void loop() 
 {
-    if (status == 2){                       // overheat loop
-        waittemp(3290);
-    } 
-    temp = analogRead(captemp);
-    err();                                  // verify error
-    state();                                // define status
-    delay(250);
+    if (isHeating){                       // overheat loop
+        waittemp(BOILING_VALUE);
+    }
+
+    checkError();
+    updateKettleDockStatus();
+    updateTemp();
     Serial.println(temp);
-    Serial.printlnf("status = %u", status);
+    Serial.printlnf("isHeating = %d", isHeating);
     Serial.printlnf("error = %u", error);
-    compt = 0;
+
+    delay(250);
 }
 
 void waittemp(int tempmax)                  // overheat loop
 {
-    while (status == 2)
+    if (error != NO_ERROR || !isDocked){
+        stopoverheat();
+        return;
+    }
+    else
     {
-        err();
-        if (error != 0){                    // if error, stop overheat
-            break;
-        }
-        temp = analogRead(captemp);
-        digitalWrite(ledr, HIGH);           // active the overheat led
-        digitalWrite(relay, HIGH);          // active the overheat relay
-        delay(50);
-        Serial.println(temp);
-        Serial.printlnf("compt = %u", compt);
-        if (temp > tempmax){                // if watter is hot, stop overheat
+        if (temp > tempmax){                // if water is hot, stop overheat
             stopoverheat();
-            break;
+            return;
         }
-        compt = compt +1;
+        else
+        {
+            compt = compt +1;
+        }
     }
 }
 
-void kettlechange()                 // kettle on or off base
-{
-    if (digitalRead(kettledetect) == 0){        // on base
-        state();
-    }
-            
-    else{                                       // off base
-        kettleoff();
-        error = 0;
-    }
-}
+void onHeatButtonPress()                   // buton of overheat, off or on
+{   
+    if(!checkStatus(HEATING_BUTTON_PIN, LOW)) return;
 
-void pushChange()                   // buton of overheat, off or on
-{
-    if (status == 2){               
+    if (isHeating){               
         stopoverheat();
     }
-    else if (status == 1){
+    else{
         overheat();
     }
 }
 
-void kettleoff()                    // kettle off base
+void kettleOffBase()                    // kettle off base
 { 
-    digitalWrite(ledj, LOW);
-    stopoverheat();
+    digitalWrite(KETTLE_DOCKED_LED_PIN, LOW);
+    if(isHeating)
+        stopoverheat();
 }
 
-void overheat() 
+int overheat() 
 {
-    tempinit = analogRead(captemp);
-    if (error == 0) {
-        status = 2;
+    if (isKettleDocked && error == NO_ERROR && temp < BOILING_VALUE) {
+        digitalWrite(HEATING_IND_LED_PIN, HIGH);           // active the overheat led
+        digitalWrite(RELAY_PIN, HIGH);          // active the overheat relay
+        isHeating = true;
+        tempinit = temp;
+        compt = 0;
     }
+    return error;
 }
 
 void stopoverheat()                         // stop overheat
 {
-    digitalWrite(ledr, LOW);
-    digitalWrite(relay, LOW);
-    status = 1;
-    state();
+    digitalWrite(HEATING_IND_LED_PIN, LOW);
+    digitalWrite(RELAY_PIN, LOW);
+    isHeating = false;
 }
 
-void state() {                                  // define the state of kettle
-    if (error == 1 || digitalRead(kettledetect) != 0) {                 // kettle off base or there are error
-        status = 0;
+void updateKettleDockStatus() {                                  // define the state of kettle
+    if(isDocked())
+    {
+        isKettleDocked = true;
+        digitalWrite(KETTLE_DOCKED_LED_PIN, HIGH);
     }
-    else if (digitalRead(kettledetect) == 0 & error != 1){              // kettle on base and there are not error
-        if (status != 2) {
-            status = 1;
-            digitalWrite(ledj, HIGH);
-        }
+    else
+    {
+        isKettleDocked = false;
+        kettleOffBase();
     }
 }
 
-void err() {                                    // error detect
-    if (digitalRead(kettledetect) == 0) {
-        if (temp < 100){
-            error = 1;                                              // kettle detected but the thermistor is not detected
+void checkError() {                                    // error detect
+    if(isOnBase())
+    {
+        if(!isTempSensorConnected())
+        {
+            error = BAD_POSITION;                // kettle detected but the thermistor is not detected
             Serial.printlnf("error 1 : Kettle ill-posed", temp);
-            kettleoff();
+            kettleOffBase();
         }
-        else if (compt > 1350 & (temp - tempinit) < 85) {           
-            error = 2;                                              // not water on kettle
-            stopoverheat();
+        else if (compt > 1350 && (temp - tempinit) < 85) {           
+            error = NO_WATER;                                              // not water on kettle
+            if(isHeating) stopoverheat();
         }
-        else if (error !=2 ) {
-            error = 0;                          // not error
+        else if (error == BAD_POSITION ) {
+            /** no more error */
+            error = NO_ERROR;
         }
+
         if (error == 2) {
             Serial.printlnf("error 2 : Not watter in kettle");
         }
     }
     else {
-            error = 0;                          // not error
-        }
+        error = NO_ERROR;                          // not error
+    }
 }
 
 int kettleControl(String command)                      // command wifi
 {
     if(command == "POWEROFF")        // power off command
     {
-        stopoverheat();
+        if(isHeating) stopoverheat();
         return 1;
     }
     
     if(command == "POWERON")        // set power on overheat command
     {
-        if (status == 0) {                          // if kettle is not on base, return 0
-            return false;
-        }
-        else {
-            overheat();                             // call overheat
-            if (status != 2) {                      // if overheat is not activate, return 0
-                return false;
-            }
-        }
-        return 1;
+        return (overheat() == NO_ERROR) ? 1 : 0;
     }
     else {
         return -1;
     }
+}
+
+void updateTemp()
+{
+    temp = analogRead(TEMP_SENSOR_PIN);
+}
+
+bool checkStatus(int pin, bool status)
+{
+    int it = 0;
+    while(it++ < 40)
+    {
+        if(digitalRead(pin) != status)
+            return false;
+        delayMicroseconds(20);
+    }
+    return true;
 }

@@ -77,10 +77,12 @@ Different variables can be read :
       * 1 : The kettle was badly put on its base
       * 2 : No water in the kettle
    * "state" : kettle status, possible values : 
+      * 0 : The kettle does not heat
+      * 1 : The kettle heats
+   * "temp" : current kettle temperature
+   * "isOnBase" 
       * 0 : Kettle is not on the base
       * 1 : Kettle is on the base
-      * 2 : The kettle heats
-   * "temp" : current kettle temperature
 
 ## Read variable over particle API
 
