@@ -1,3 +1,5 @@
+// This #include statement was automatically added by the Particle IDE.
+#include "MQTT/MQTT.h"
 
 /******************************************************************************
  * @file    kettle spark firmware
@@ -28,6 +30,7 @@ typedef enum{
 }EKettleError;
 
 int kettleControl(String command);
+void mqttCallback(char* topic, byte* payload, unsigned int length);
 void waittemp(int tempmax);
 int overheat(void);
 void stopoverheat();
@@ -52,9 +55,34 @@ inline bool isTempSensorConnected(void){return analogRead(TEMP_SENSOR_PIN) > 100
 inline bool isDocked(void){return isOnBase() && isTempSensorConnected();}
 
  /*** DOCKER = kettle on base and temperature sensor connected */
-bool isKettleDocked, isHeating, heatButtonPressed;
-int error, temp, tempinit;
+uint8_t isKettleDocked, isHeating, heatButtonPressed, error;
+int temp, tempinit;
 long heatTime;
+
+// glados
+byte mqttserver[] = { 192,168,130,22 };
+MQTT mqttClient(mqttserver, 1883, mqttCallback);
+
+const char* mqttKettleCmdsTopic = "kettle/kettleCmds";
+const char* mqttKettleCloudTopic = "kettle/particleCloud";
+const char* mqttKettleIsKettleDockedTopic = "kettle/docked";
+const char* mqttKettleIsKettleHeatingTopic = "kettle/heating";
+const char* mqttKettleIsKettleErrorTopic = "kettle/error";
+const char* mqttKettleIsKettleTempTopic = "kettle/temp";
+
+SYSTEM_MODE(MANUAL);
+
+void connectMQTT(void)
+{
+   Serial.println("connect mqtt");
+   mqttClient.connect("kettle_photon"); 
+   if (mqttClient.isConnected()) 
+   {
+       mqttClient.subscribe(mqttKettleCmdsTopic);
+       mqttClient.subscribe(mqttKettleCloudTopic);
+       Serial.println("connected to mqtt");
+   }
+}
 
 void setup() {
     Particle.function("kettleAPI", kettleControl); 
@@ -84,6 +112,13 @@ void setup() {
     Particle.variable("isheating", isHeating);
     Particle.variable("isdocked", isKettleDocked);
     Particle.variable("temp", temp);
+    
+    connectMQTT();
+    mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
+    mqttClient.publish(mqttKettleIsKettleDockedTopic, &isKettleDocked, sizeof(isKettleDocked));
+    mqttClient.publish(mqttKettleIsKettleErrorTopic, &error, sizeof(error));
+    
+    Particle.connect();
 }
 
 void loop() 
@@ -103,6 +138,18 @@ void loop()
     Serial.printlnf("isHeating = %d", isHeating);
     Serial.printlnf("error = %u", error);
 
+    if (mqttClient.isConnected()) {
+        mqttClient.loop(); 
+    }
+    else
+    {
+        Serial.print("mqtt client not connected - id=");
+        connectMQTT();
+     } 
+     
+    if(Particle.connected())
+       Particle.process();
+     
     delay(10);
 }
 
@@ -156,6 +203,7 @@ int overheat()
             isHeating = true;
             tempinit = temp;
             heatTime = millis();
+            mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
         }
         else
         {
@@ -170,9 +218,11 @@ void stopoverheat()                         // stop overheat
     digitalWrite(HEATING_IND_LED_PIN, LOW);
     digitalWrite(RELAY_PIN, LOW);
     isHeating = false;
+    mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
 }
 
 void updateKettleDockStatus() {                                  // define the state of kettle
+    uint8_t oldStatus = isKettleDocked;
     if(isDocked())
     {
         isKettleDocked = true;
@@ -183,9 +233,13 @@ void updateKettleDockStatus() {                                  // define the s
         isKettleDocked = false;
         kettleOffBase();
     }
+    
+    if(oldStatus != isKettleDocked)
+        mqttClient.publish(mqttKettleIsKettleDockedTopic, &isKettleDocked, sizeof(isKettleDocked));
 }
 
 void checkError() {                                    // error detect
+    uint8_t oldError = error;
     if(isOnBase())
     {
         if(!isTempSensorConnected())
@@ -210,6 +264,10 @@ void checkError() {                                    // error detect
     else {
         error = NO_ERROR;                          // not error
     }
+    
+    if(oldError != error)
+       mqttClient.publish(mqttKettleIsKettleErrorTopic, &error, sizeof(error));
+        
 }
 
 int kettleControl(String command)                      // command wifi
@@ -229,9 +287,40 @@ int kettleControl(String command)                      // command wifi
     }
 }
 
+
+
+void mqttCallback(char* topic, byte* payload, unsigned int length) {
+    char p[length + 1];
+    memcpy(p, payload, length);
+    
+    p[length] = '\0';
+    String message(p);
+    Serial.print("received MQTT payload ");
+    Serial.print(message);
+    Serial.print(" on topic ");
+    Serial.println(topic);
+    if(strcmp(topic, mqttKettleCloudTopic) == 0)
+    {
+        if (message.equals("ENABLE") && !Particle.connected()){
+            Particle.connect();
+        }
+        else if(message.equals("DISABLE") && Particle.connected())      
+        {
+            Particle.disconnect();
+        }
+    }
+    else if(strcmp(topic, mqttKettleCmdsTopic) == 0)
+    {
+        kettleControl(message);
+    }
+}
+
 void updateTemp()
 {
+    int oldTemp = temp;
     temp = analogRead(TEMP_SENSOR_PIN);
+    if(temp != oldTemp)
+        mqttClient.publish(mqttKettleIsKettleTempTopic, (uint8_t*) &temp, sizeof(temp));
 }
 
 bool checkStatus(int pin, bool status)

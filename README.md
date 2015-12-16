@@ -68,6 +68,26 @@ Project has been done in Amiqual4Home Equipex Creativity Lab - https://amiqual4h
 
 	curl https://api.spark.io/v1/devices/'PHOTON_ID'/kettleAPI -d access_token='YOUR_TOKEN' -d "params=CMD_NAME"
 
+## Kettle control over MQTT
+ * a valid MQTT broker must be defined in Photon code mqttserver variable 
+
+### topics
+#### "kettle/kettleCmds" : kettle control commands
+In this topic, payload containing command name must be sent, 
+
+e.g :
+
+    mosquitto_pub -h BROKER_IP -t kettle/kettleCmds -m CMD_NAME
+ 
+#### "kettle/particleCloud" : kettle cloud connection
+To enable cloud connection
+    
+    mosquitto_pub -h BROKER_IP -t kettle/particleCloud -m ENABLE
+    
+To disable cloud connection
+    
+    mosquitto_pub -h BROKER_IP -t kettle/particleCloud -m DISABLE
+
 ## Input commands - as strings
 Different variables can be read : 
 
@@ -91,6 +111,19 @@ Different variables can be read :
 Example :
 
     curl https://api.spark.io/v1/devices/'PHOTON_ID'/temp?access_token='YOUR_TOKEN'
+
+## Subscribe variables over MQTT
+ * a valid MQTT broker must be defined in Photon code mqttserver variable
+
+### Variables topics
+ * "error" - number - "kettle/error" topic
+ * "isHeating" - number - "kettle/heating" topic
+ * "temp" - number - "kettle/temp" topic
+ * "isdocked" - number - "kettle/docked" topic
+
+e.g :
+
+    mosquitto_sub -h BROKER_IP -t kettle/temp
 
 # References
  * https://docs.particle.io/guide/getting-started/intro/photon/
