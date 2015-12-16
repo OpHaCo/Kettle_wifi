@@ -116,10 +116,10 @@ Example :
  * a valid MQTT broker must be defined in Photon code mqttserver variable
 
 ### Variables topics
- * "error" - number - "kettle/error" topic
- * "isHeating" - number - "kettle/heating" topic
- * "temp" - number - "kettle/temp" topic
- * "isdocked" - number - "kettle/docked" topic
+ * "error" - 1 byte unsigned integer - "kettle/error" topic
+ * "isHeating" - 1 byte unsigned integer - "kettle/heating" topic
+ * "temp" - 4 bytes unsigned integer - "kettle/temp" topic
+ * "isdocked" - 1 byte unsigned integer - "kettle/docked" topic
 
 e.g :
 
