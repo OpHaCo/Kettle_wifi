@@ -53,7 +53,8 @@ inline bool isDocked(void){return isOnBase() && isTempSensorConnected();}
 
  /*** DOCKER = kettle on base and temperature sensor connected */
 bool isKettleDocked, isHeating, heatButtonPressed;
-int error, temp, compt, tempinit;
+int error, temp, tempinit;
+long heatTime;
 
 void setup() {
     Particle.function("kettleAPI", kettleControl); 
@@ -68,13 +69,13 @@ void setup() {
     attachInterrupt(HEATING_BUTTON_PIN, onHeatButtonPressIT, FALLING);       // call onHeatButtonPress if push change of low state
     
     error = NO_ERROR;
-    compt = 0;
     temp = analogRead(TEMP_SENSOR_PIN);
     tempinit = 0;
     isKettleDocked = false;
     isHeating = false;
     heatButtonPressed = false;
-
+    heatTime = 0;
+    
     checkError();
     updateKettleDockStatus();
     updateTemp();
@@ -118,22 +119,18 @@ void waittemp(int tempmax)                  // overheat loop
             onAlreadyHotAnim();
             return;
         }
-        else
-        {
-            compt = compt +1;
-        }
     }
 }
 
 void onHeatButtonPress()                   // buton of overheat, off or on
 {   
-    heatButtonPressed = false;
     if (isHeating){               
         stopoverheat();
     }
     else{
         overheat();
     }
+    heatButtonPressed = false;
 }
 
 void onHeatButtonPressIT()                   // buton of overheat, off or on
@@ -158,7 +155,7 @@ int overheat()
             digitalWrite(RELAY_PIN, HIGH);          // active the overheat relay
             isHeating = true;
             tempinit = temp;
-            compt = 0;
+            heatTime = millis();
         }
         else
         {
@@ -197,9 +194,9 @@ void checkError() {                                    // error detect
             Serial.printlnf("error 1 : Kettle ill-posed", temp);
             kettleOffBase();
         }
-        else if (compt > 1350 && (temp - tempinit) < 85) {           
+        else if (isHeating && abs(millis() - heatTime) > 3000 && (temp - tempinit) < 85) {           
             error = NO_WATER;                                              // not water on kettle
-            if(isHeating) stopoverheat();
+            stopoverheat();
         }
         else if (error == BAD_POSITION ) {
             /** no more error */
