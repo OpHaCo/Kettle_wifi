@@ -35,7 +35,9 @@ void checkError();
 void updateKettleDockStatus();
 void updateTemp();
 bool checkStatus(int pin, bool status);
-
+void onAlreadyHotAnim();
+void onHeatButtonPressIT();
+void onHeatButtonPress();
 static const int KETTLE_ON_BASE_IN_PIN  = D3;
 static const int HEATING_BUTTON_PIN     = D2;
 static const int HEATING_IND_LED_PIN    = D1;
@@ -50,7 +52,7 @@ inline bool isTempSensorConnected(void){return analogRead(TEMP_SENSOR_PIN) > 100
 inline bool isDocked(void){return isOnBase() && isTempSensorConnected();}
 
  /*** DOCKER = kettle on base and temperature sensor connected */
-bool isKettleDocked, isHeating;
+bool isKettleDocked, isHeating, heatButtonPressed;
 int error, temp, compt, tempinit;
 
 void setup() {
@@ -63,7 +65,7 @@ void setup() {
     pinMode(RELAY_PIN, OUTPUT);
     pinMode(TEMP_SENSOR_PIN, INPUT);
    
-    attachInterrupt(HEATING_BUTTON_PIN, onHeatButtonPress, FALLING);       // call onHeatButtonPress if push change of low state
+    attachInterrupt(HEATING_BUTTON_PIN, onHeatButtonPressIT, FALLING);       // call onHeatButtonPress if push change of low state
     
     error = NO_ERROR;
     compt = 0;
@@ -71,6 +73,7 @@ void setup() {
     tempinit = 0;
     isKettleDocked = false;
     isHeating = false;
+    heatButtonPressed = false;
 
     checkError();
     updateKettleDockStatus();
@@ -84,6 +87,10 @@ void setup() {
 
 void loop() 
 {
+    if(heatButtonPressed)
+    {
+        onHeatButtonPress();
+    }
     if (isHeating){                       // overheat loop
         waittemp(BOILING_VALUE);
     }
@@ -95,7 +102,7 @@ void loop()
     Serial.printlnf("isHeating = %d", isHeating);
     Serial.printlnf("error = %u", error);
 
-    delay(250);
+    delay(10);
 }
 
 void waittemp(int tempmax)                  // overheat loop
@@ -108,6 +115,7 @@ void waittemp(int tempmax)                  // overheat loop
     {
         if (temp > tempmax){                // if water is hot, stop overheat
             stopoverheat();
+            onAlreadyHotAnim();
             return;
         }
         else
@@ -119,14 +127,19 @@ void waittemp(int tempmax)                  // overheat loop
 
 void onHeatButtonPress()                   // buton of overheat, off or on
 {   
-    if(!checkStatus(HEATING_BUTTON_PIN, LOW)) return;
-
+    heatButtonPressed = false;
     if (isHeating){               
         stopoverheat();
     }
     else{
         overheat();
     }
+}
+
+void onHeatButtonPressIT()                   // buton of overheat, off or on
+{   
+    if(!checkStatus(HEATING_BUTTON_PIN, LOW)) return;
+    heatButtonPressed = true;
 }
 
 void kettleOffBase()                    // kettle off base
@@ -138,12 +151,19 @@ void kettleOffBase()                    // kettle off base
 
 int overheat() 
 {
-    if (isKettleDocked && error == NO_ERROR && temp < BOILING_VALUE) {
-        digitalWrite(HEATING_IND_LED_PIN, HIGH);           // active the overheat led
-        digitalWrite(RELAY_PIN, HIGH);          // active the overheat relay
-        isHeating = true;
-        tempinit = temp;
-        compt = 0;
+    if (isKettleDocked && error == NO_ERROR) {
+        if(temp < BOILING_VALUE)
+        {
+            digitalWrite(HEATING_IND_LED_PIN, HIGH);           // active the overheat led
+            digitalWrite(RELAY_PIN, HIGH);          // active the overheat relay
+            isHeating = true;
+            tempinit = temp;
+            compt = 0;
+        }
+        else
+        {
+            onAlreadyHotAnim();
+        }
     }
     return error;
 }
@@ -227,4 +247,15 @@ bool checkStatus(int pin, bool status)
         delayMicroseconds(20);
     }
     return true;
+}
+
+void onAlreadyHotAnim(void){
+    int val = 0xFF;
+    analogWrite(HEATING_IND_LED_PIN, val);
+    delay(100);
+    while(val-- != 0)
+    {
+        analogWrite(HEATING_IND_LED_PIN, val);
+        delay(2);
+    }
 }
