@@ -101,16 +101,12 @@ void setup() {
     attachInterrupt(HEATING_BUTTON_PIN, onHeatButtonPressIT, FALLING);       // call onHeatButtonPress if push change of low state
     
     error = NO_ERROR;
-    temp = analogRead(TEMP_SENSOR_PIN);
+    temp = 0;
     tempinit = 0;
     isKettleDocked = false;
     isHeating = false;
     heatButtonPressed = false;
     heatTime = 0;
-    
-    checkError();
-    updateKettleDockStatus();
-    updateTemp();
 
     Particle.variable("error", error);
     Particle.variable("isheating", isHeating);
@@ -118,11 +114,12 @@ void setup() {
     Particle.variable("temp", temp);
     
     connectMQTT();
-    mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
-    mqttClient.publish(mqttKettleIsKettleDockedTopic, &isKettleDocked, sizeof(isKettleDocked));
-    mqttClient.publish(mqttKettleIsKettleErrorTopic, &error, sizeof(error));
-    
+    mqttClient.publish(mqttKettleIsKettleHeatingTopic, (isHeating) ? "1" : "0");
     Particle.connect();
+    
+    checkError();
+    updateKettleDockStatus();
+    updateTemp();
 }
 
 void loop() 
@@ -207,7 +204,7 @@ int overheat()
             isHeating = true;
             tempinit = temp;
             heatTime = millis();
-            mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
+            mqttClient.publish(mqttKettleIsKettleHeatingTopic, (isHeating) ? "1" : "0");
         }
         else
         {
@@ -222,7 +219,7 @@ void stopoverheat()                         // stop overheat
     digitalWrite(HEATING_IND_LED_PIN, LOW);
     digitalWrite(RELAY_PIN, LOW);
     isHeating = false;
-    mqttClient.publish(mqttKettleIsKettleHeatingTopic, &isHeating, sizeof(isHeating));
+    mqttClient.publish(mqttKettleIsKettleHeatingTopic, (isHeating) ? "1" : "0");
 }
 
 void updateKettleDockStatus() {                                  // define the state of kettle
@@ -239,11 +236,12 @@ void updateKettleDockStatus() {                                  // define the s
     }
     
     if(oldStatus != isKettleDocked)
-        mqttClient.publish(mqttKettleIsKettleDockedTopic, &isKettleDocked, sizeof(isKettleDocked));
+        mqttClient.publish(mqttKettleIsKettleDockedTopic, (isKettleDocked) ? "1" : "0");
 }
 
 void checkError() {                                    // error detect
     uint8_t oldError = error;
+    char errToStr[2];
     if(isOnBase())
     {
         if(!isTempSensorConnected())
@@ -252,7 +250,7 @@ void checkError() {                                    // error detect
             Serial.printlnf("error 1 : Kettle ill-posed", temp);
             kettleOffBase();
         }
-        else if (isHeating && abs(millis() - heatTime) > 10000 && (temp - tempinit) < 3) {           
+        else if (isHeating && abs(millis() - heatTime) > 25000 && (temp - tempinit) < 1) {           
             error = NO_WATER;                                              // not water on kettle
             stopoverheat();
         }
@@ -270,8 +268,10 @@ void checkError() {                                    // error detect
     }
     
     if(oldError != error)
-       mqttClient.publish(mqttKettleIsKettleErrorTopic, &error, sizeof(error));
-        
+    {
+       sprintf(errToStr, "%d", error);
+       mqttClient.publish(mqttKettleIsKettleErrorTopic, errToStr);
+    }   
 }
 
 int kettleControl(String command)                      // command wifi
@@ -320,10 +320,16 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void updateTemp()
 {
-    double oldTemp = temp;
+    static double lastMQTTTemp = 0;
+    
+    char tempToStr[6];
     temp = analogRead(TEMP_SENSOR_PIN) / DEG_TO_SENSOR;
-    if(fabs(temp - oldTemp) > 0.5)
-        mqttClient.publish(mqttKettleIsKettleTempTopic, (uint8_t*) &temp, sizeof(temp));
+    if(fabs(temp - lastMQTTTemp) > 0.5)
+    {
+       lastMQTTTemp = temp;
+       sprintf(tempToStr, "%3.1f", temp);
+       mqttClient.publish(mqttKettleIsKettleTempTopic, tempToStr);   
+    }
 }
 
 bool checkStatus(int pin, bool status)
