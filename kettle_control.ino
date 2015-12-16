@@ -1,5 +1,6 @@
 // This #include statement was automatically added by the Particle IDE.
 #include "MQTT/MQTT.h"
+#include "math.h"
 
 /******************************************************************************
  * @file    kettle spark firmware
@@ -31,7 +32,7 @@ typedef enum{
 
 int kettleControl(String command);
 void mqttCallback(char* topic, byte* payload, unsigned int length);
-void waittemp(int tempmax);
+void waittemp(float tempmax);
 int overheat(void);
 void stopoverheat();
 void checkError();
@@ -48,7 +49,10 @@ static const int KETTLE_DOCKED_LED_PIN  = D0;
 static const int TEMP_SENSOR_PIN        = A0;
 static const int RELAY_PIN              = D4;
 
-static const int BOILING_VALUE = 3290;
+/** this sensor value corresponds to 100°C */
+static const int BOILING_SENSOR_VALUE = 3290;
+static const int BOILING_TEMP_VALUE = 100;
+static const float DEG_TO_SENSOR = BOILING_SENSOR_VALUE/BOILING_TEMP_VALUE;
 
 inline bool isOnBase(void){return !digitalRead(KETTLE_ON_BASE_IN_PIN);}
 inline bool isTempSensorConnected(void){return analogRead(TEMP_SENSOR_PIN) > 100;}
@@ -56,7 +60,7 @@ inline bool isDocked(void){return isOnBase() && isTempSensorConnected();}
 
  /*** DOCKER = kettle on base and temperature sensor connected */
 uint8_t isKettleDocked, isHeating, heatButtonPressed, error;
-int temp, tempinit;
+double temp, tempinit;
 long heatTime;
 
 // glados
@@ -128,7 +132,7 @@ void loop()
         onHeatButtonPress();
     }
     if (isHeating){                       // overheat loop
-        waittemp(BOILING_VALUE);
+        waittemp(BOILING_TEMP_VALUE);
     }
 
     checkError();
@@ -153,7 +157,7 @@ void loop()
     delay(10);
 }
 
-void waittemp(int tempmax)                  // overheat loop
+void waittemp(float tempmax)                  // overheat loop
 {
     if (error != NO_ERROR || !isDocked){
         stopoverheat();
@@ -196,7 +200,7 @@ void kettleOffBase()                    // kettle off base
 int overheat() 
 {
     if (isKettleDocked && error == NO_ERROR) {
-        if(temp < BOILING_VALUE)
+        if(temp < BOILING_TEMP_VALUE)
         {
             digitalWrite(HEATING_IND_LED_PIN, HIGH);           // active the overheat led
             digitalWrite(RELAY_PIN, HIGH);          // active the overheat relay
@@ -248,7 +252,7 @@ void checkError() {                                    // error detect
             Serial.printlnf("error 1 : Kettle ill-posed", temp);
             kettleOffBase();
         }
-        else if (isHeating && abs(millis() - heatTime) > 3000 && (temp - tempinit) < 85) {           
+        else if (isHeating && abs(millis() - heatTime) > 10000 && (temp - tempinit) < 3) {           
             error = NO_WATER;                                              // not water on kettle
             stopoverheat();
         }
@@ -288,7 +292,6 @@ int kettleControl(String command)                      // command wifi
 }
 
 
-
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
     char p[length + 1];
     memcpy(p, payload, length);
@@ -317,9 +320,9 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void updateTemp()
 {
-    int oldTemp = temp;
-    temp = analogRead(TEMP_SENSOR_PIN);
-    if(temp != oldTemp)
+    double oldTemp = temp;
+    temp = analogRead(TEMP_SENSOR_PIN) / DEG_TO_SENSOR;
+    if(fabs(temp - oldTemp) > 0.5)
         mqttClient.publish(mqttKettleIsKettleTempTopic, (uint8_t*) &temp, sizeof(temp));
 }
 

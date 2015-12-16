@@ -99,7 +99,7 @@ Different variables can be read :
    * "isHeating" : is kettle heating?
       * 0 : The kettle does not heat
       * 1 : The kettle heats
-   * "temp" : current kettle temperature
+   * "temp" : current kettle temperature in °C
    * "isdocked" 
       * 0 : Kettle not docked to base, either kettle removed from base, kettle on base but sensor not connected
       * 1 : Kettle is docjed the base
@@ -118,7 +118,7 @@ Example :
 ### Variables topics
  * "error" - 1 byte unsigned integer - "kettle/error" topic
  * "isHeating" - 1 byte unsigned integer - "kettle/heating" topic
- * "temp" - 4 bytes unsigned integer - "kettle/temp" topic
+ * "temp" - 8 bytes double , temp in °C - "kettle/temp" topic
  * "isdocked" - 1 byte unsigned integer - "kettle/docked" topic
 
 e.g :
